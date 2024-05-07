@@ -29,12 +29,21 @@
  *  @pgnum: page number
  *  @value: obtained value
  */
-int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE value)
+int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE *value)
 {
    /* TODO: the identify info is mapped to 
     *      cache line by employing:
     *      direct mapped, associated mapping etc.
     */
+
+   if (mp == NULL) {
+      return -1;
+   }
+
+   int cache_index = pgnum % (mp->maxsz / sizeof(BYTE));
+
+   *value = mp->storage[cache_index * sizeof(BYTE)];
+
    return 0;
 }
 
@@ -51,6 +60,15 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
     *      cache line by employing:
     *      direct mapped, associated mapping etc.
     */
+   
+   if (mp == NULL) {
+      return -1;
+   }
+
+   int cache_index = pgnum % (mp->maxsz / sizeof(BYTE));
+
+   mp->storage[cache_index * sizeof(BYTE)] = value;
+   
    return 0;
 }
 
@@ -62,8 +80,9 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
  */
 int TLBMEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value)
 {
-   if (mp == NULL)
-     return -1;
+   if (mp == NULL){
+      return -1;
+   }
 
    /* TLB cached is random access by native */
    *value = mp->storage[addr];
@@ -80,8 +99,9 @@ int TLBMEMPHY_read(struct memphy_struct * mp, int addr, BYTE *value)
  */
 int TLBMEMPHY_write(struct memphy_struct * mp, int addr, BYTE data)
 {
-   if (mp == NULL)
-     return -1;
+   if (mp == NULL){
+      return -1;
+   }
 
    /* TLB cached is random access by native */
    mp->storage[addr] = data;
@@ -100,6 +120,16 @@ int TLBMEMPHY_dump(struct memphy_struct * mp)
    /*TODO dump memphy contnt mp->storage 
     *     for tracing the memory content
     */
+
+   if (mp == NULL) {
+      return -1;
+   }
+
+  // Print the content of the TLB cache
+   printf("TLB Cache Dump:\n");
+   for (int i = 0; i < mp->maxsz; i++) {
+      printf("  - Address: %d, Value: 0x%02X\n", i, mp->storage[i]);
+   }
 
    return 0;
 }

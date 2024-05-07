@@ -112,7 +112,14 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   caller->mm->symrgtbl[rgid].rg_end = old_sbrk + size;
 
   *alloc_addr = old_sbrk;
-
+  struct vm_area_struct *remain_rg = get_vma_by_num(caller->mm, vmaid);
+  if(old_sbrk + size < remain_rg->sbrk)
+  {
+    struct vm_rg_struct *rg_free = malloc(sizeof(struct vm_rg_struct));
+    rg_free->rg_start = old_sbrk + size;
+    rg_free->rg_end = remain_rg->sbrk;
+    enlist_vm_freerg_list(caller->mm, rg_free);
+  }
   return 0;
 }
 
@@ -128,10 +135,15 @@ int __free(struct pcb_t *caller, int vmaid, int rgid)
   struct vm_rg_struct rgnode;
 
   if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
-    return -1;
-
+  return -1;
   /* TODO: Manage the collect freed region to freerg_list */
+  struct vm_rg_struct *freerg_node = malloc(sizeof(struct vm_rg_struct));
+  freerg_node->rg_start = rgnode->rg_start;
+  freerg_node->rg_end = rgnode->rg_end;
+  freerg_node->rg_next = NULL;
 
+  rgnode->rg_start = rgnode->rg_end = 0;
+  rgnode->rg_next = NULL;
   /*enlist the obsoleted memory region */
   enlist_vm_freerg_list(caller->mm, rgnode);
 
@@ -183,10 +195,15 @@ int pg_getpage(struct mm_struct *mm, int pgn, int *fpn, struct pcb_t *caller)
 
     /* TODO: Play with your paging theory here */
     /* Find victim page */
-    find_victim_page(caller->mm, &vicpgn);
-
+    if (find_victim_page(caller->mm, &vicpgn) == -1)
+    {
+      return -1;
+    }
     /* Get free frame in MEMSWP */
-    MEMPHY_get_freefp(caller->active_mswp, &swpfpn);
+    if (MEMPHY_get_freefp(caller->active_mswp, &swpfpn) == -1)
+    {
+      return -1;
+    }
 
 
     /* Do swap frame from MEMRAM to MEMSWP and vice versa*/
@@ -404,10 +421,29 @@ struct vm_rg_struct* get_vm_area_node_at_brk(struct pcb_t *caller, int vmaid, in
  */
 int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int vmaend)
 {
-  //struct vm_area_struct *vma = caller->mm->mmap;
-
+   if (vmastart >= vmaend)
+  {
+    return -1;
+  }
+  struct vm_area_struct *vma = caller->mm->mmap;
+  if (vma == NULL)
+  {
+    return -1;
+  }
   /* TODO validate the planned memory area is not overlapped */
+  if (cur_area == NULL)
+  {
+    return -1;
+  }
 
+  while (vma != NULL)
+  {
+    if (vma != cur_area && OVERLAP(cur_area->vm_start, cur_area->vm_end, vma->vm_start, vma->vm_end))
+    {
+      return -1;
+    }
+    vma = vma->vm_next;
+  }
   return 0;
 }
 
@@ -452,6 +488,18 @@ int find_victim_page(struct mm_struct *mm, int *retpgn)
   struct pgn_t *pg = mm->fifo_pgn;
 
   /* TODO: Implement the theorical mechanism to find the victim page */
+  if (!pg)
+  {
+    return -1;
+  }
+  struct pgn_t *prev = NULL;
+  while (pg->pg_next)
+  {
+    prev = pg;
+    pg = pg->pg_next;
+  }
+  *retpgn = pg->pgn;
+  prev->pg_next = NULL;
 
   free(pg);
 

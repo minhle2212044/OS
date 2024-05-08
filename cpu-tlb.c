@@ -31,7 +31,7 @@ int tlb_change_all_page_tables_of(struct pcb_t *proc,  struct memphy_struct * mp
           /* Update TLB cache with frame number information */
           int pgnum = trans_table->table[j].v_index;
           int frame_number = trans_table->table[j].p_index;
-          tlb_cache_write(mp, proc->pid, pgnum, frame_number);
+          tlb_cache_write(proc->tlb, proc->pid, pgnum, frame_number);
         }
       }
     }
@@ -49,7 +49,7 @@ int tlb_flush_tlb_of(struct pcb_t *proc, struct memphy_struct * mp)
   // Flush TLB cache by resetting its contents
   int max_cache_size = mp->maxsz / sizeof(BYTE);
   for (int i = 0; i < max_cache_size; i++) {
-    tlb_cache_write(mp, proc->pid, i, 0); // Invalidate TLB cache entry
+    tlb_cache_write(proc->tlb, proc->pid, i, 0); // Invalidate TLB cache entry
   }
   return 0;
 }
@@ -75,8 +75,8 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
 
     // Update TLB cache with the frame number
     struct page_table_t *page_table = proc->page_table;
-    struct trans_table_t *trans_table = page_table->table[i].next_lv;
-    int frame_number = trans_table->table[i].p_index;
+    struct trans_table_t *trans_table = page_table->table[pgnum / (1 << FIRST_LV_LEN)].next_lv;
+    int frame_number = trans_table->table[pgnum % (1 << SECOND_LV_LEN)].p_index;
     tlb_cache_write(proc->tlb, proc->pid, pgnum, frame_number);
   }
 
@@ -97,7 +97,7 @@ int tlbfree_data(struct pcb_t *proc, uint32_t reg_index)
 
   for (int pgnum = 0; pgnum < PAGING_MAX_PGN; pgnum++) {
     BYTE value;
-    if (tlb_cache_read(proc->tlb, proc->pid, pgnum, value) == 0) {
+    if (tlb_cache_read(proc->tlb, proc->pid, pgnum, &value) == 0) {
       /* Check if the TLB entry corresponds to the freed region */
       if (value == reg_index) {
         /* Invalidate the TLB entry by writing an invalid value */
@@ -124,7 +124,7 @@ int tlbread(struct pcb_t * proc, uint32_t source,
   /* TODO retrieve TLB CACHED frame num of accessing page(s)*/
   /* by using tlb_cache_read()/tlb_cache_write()*/
   /* frmnum is return value of tlb_cache_read/write value*/
-	frmnum = tlb_cache_read(proc->tlb, proc->pid, offset / PAGE_SIZE, data);
+	frmnum = tlb_cache_read(proc->tlb, proc->pid, offset / PAGE_SIZE, &data);
 
 #ifdef IODUMP
   if (frmnum >= 0)

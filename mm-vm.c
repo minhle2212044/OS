@@ -81,7 +81,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
 {
   /*Allocate at the toproof */
   struct vm_rg_struct rgnode;
-
+  printf("___alloc");
   if (get_free_vmrg_area(caller, vmaid, size, &rgnode) == 0)
   {
     caller->mm->symrgtbl[rgid].rg_start = rgnode.rg_start;
@@ -97,7 +97,7 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   /*Attempt to increate limit to get space */
   struct vm_area_struct *cur_vma = get_vma_by_num(caller->mm, vmaid);
   int inc_sz = PAGING_PAGE_ALIGNSZ(size);
-  //int inc_limit_ret
+  int inc_limit_ret
   int old_sbrk ;
 
   old_sbrk = cur_vma->sbrk;
@@ -115,9 +115,9 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
   struct vm_area_struct *remain_rg = get_vma_by_num(caller->mm, vmaid);
   if(old_sbrk + size < remain_rg->sbrk)
   {
-    struct vm_rg_struct *rg_free = malloc(sizeof(struct vm_rg_struct));
-    rg_free->rg_start = old_sbrk + size;
-    rg_free->rg_end = remain_rg->sbrk;
+    struct vm_rg_struct rg_free;
+    rg_free.rg_start = old_sbrk + size;
+    rg_free.rg_end = remain_rg->sbrk;
     enlist_vm_freerg_list(caller->mm, rg_free);
   }
   return 0;
@@ -132,18 +132,19 @@ int __alloc(struct pcb_t *caller, int vmaid, int rgid, int size, int *alloc_addr
  */
 int __free(struct pcb_t *caller, int vmaid, int rgid)
 {
+printf("___free");
   struct vm_rg_struct rgnode;
 
   if(rgid < 0 || rgid > PAGING_MAX_SYMTBL_SZ)
   return -1;
   /* TODO: Manage the collect freed region to freerg_list */
   struct vm_rg_struct *freerg_node = malloc(sizeof(struct vm_rg_struct));
-  freerg_node->rg_start = rgnode->rg_start;
-  freerg_node->rg_end = rgnode->rg_end;
+  freerg_node->rg_start = rgnode.rg_start;
+  freerg_node->rg_end = rgnode.rg_end;
   freerg_node->rg_next = NULL;
 
-  rgnode->rg_start = rgnode->rg_end = 0;
-  rgnode->rg_next = NULL;
+  rgnode.rg_start = rgnode.rg_end = 0;
+  rgnode.rg_next = NULL;
   /*enlist the obsoleted memory region */
   enlist_vm_freerg_list(caller->mm, rgnode);
 
@@ -158,7 +159,6 @@ int __free(struct pcb_t *caller, int vmaid, int rgid)
 int pgalloc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
 {
   int addr;
-
   /* By default using vmaid = 0 */
   return __alloc(proc, 0, reg_index, size, &addr);
 }
@@ -426,6 +426,7 @@ int validate_overlap_vm_area(struct pcb_t *caller, int vmaid, int vmastart, int 
     return -1;
   }
   struct vm_area_struct *vma = caller->mm->mmap;
+  struct vm_area_struct *cur_area = get_vma_by_num(caller->mm, vmaid);
   if (vma == NULL)
   {
     return -1;

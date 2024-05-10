@@ -63,7 +63,7 @@ static void * cpu_routine(void * args) {
                            next_slot(timer_id);
                            continue; /* First load failed. skip dummy load */
                         }
-		}else if (proc->pc == proc->code->size) {
+		}else if (proc->pc >= proc->code->size) {
 			/* The porcess has finish it job */
 			printf("\tCPU %d: Processed %2d has finished\n",
 				id ,proc->pid);
@@ -77,7 +77,6 @@ static void * cpu_routine(void * args) {
 			put_proc(proc);
 			proc = get_proc();
 		}
-		
 		/* Recheck process status after loading new process */
 		if (proc == NULL && done) {
 			/* No process to run, exit */

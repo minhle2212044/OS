@@ -95,8 +95,8 @@ int vmap_page_range(struct pcb_t *caller, // process call
   for(; pgit < pgnum; ++pgit)
     {
       fpit->fp_next = frames;
-      pte_set_fpn($caller->mm->pgd[pgn + pgit], fpit->fpn);
-      free(pgit);
+      pte_set_fpn(&(caller->mm->pgd[pgn + pgit]), fpit->fpn);
+      free(fpit);
       enlist_pgn_node(&caller->mm->fifo_pgn, pgn+pgit);
     }
   /* TODO map range of frame to address space 
@@ -119,7 +119,7 @@ int vmap_page_range(struct pcb_t *caller, // process call
 int alloc_pages_range(struct pcb_t *caller, int req_pgnum, struct framephy_struct** frm_lst)
 {
   int pgit, fpn;
-  //struct framephy_struct *newfp_str;
+  struct framephy_struct *newfp_str;
 
   for(pgit = 0; pgit < req_pgnum; pgit++)
   {

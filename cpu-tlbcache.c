@@ -19,6 +19,7 @@
 
 #include "mm.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 #define init_tlbcache(mp,sz,...) init_memphy(mp, sz, (1, ##__VA_ARGS__))
 
@@ -42,7 +43,7 @@ int tlb_cache_read(struct memphy_struct * mp, int pid, int pgnum, BYTE *value)
 
    int cache_index = pgnum % (mp->maxsz / sizeof(BYTE));
 
-   *value = mp->storage[cache_index * sizeof(BYTE)];
+   *value = mp->storage[cache_index];
 
    return 0;
 }
@@ -67,7 +68,7 @@ int tlb_cache_write(struct memphy_struct *mp, int pid, int pgnum, BYTE value)
 
    int cache_index = pgnum % (mp->maxsz / sizeof(BYTE));
 
-   mp->storage[cache_index * sizeof(BYTE)] = value;
+   mp->storage[cache_index] = value;
    
    return 0;
 }

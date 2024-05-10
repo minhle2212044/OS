@@ -85,8 +85,6 @@ int tlballoc(struct pcb_t *proc, uint32_t size, uint32_t reg_index)
 
     // Update TLB cache with the frame number
     struct page_table_t *page_table = proc->page_table;
-    int first_level_index = pgnum / (1 << FIRST_LV_LEN);
-    int second_level_index = pgnum / (1 << SECOND_LV_LEN);
     struct trans_table_t *trans_table = page_table->table[pgnum / (1 << FIRST_LV_LEN)].next_lv;
     int frame_number = trans_table->table[pgnum % (1 << SECOND_LV_LEN)].p_index;
     tlb_cache_write(proc->tlb, proc->pid, pgnum, frame_number);
